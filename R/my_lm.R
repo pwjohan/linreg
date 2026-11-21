@@ -43,6 +43,7 @@ summary.my_lm <- function(object, ...) {
   values <- list(
     call = object$call,
     coefficients = coef_table,
+    residuals = object$residuals,
     sigma = sqrt(sig2hat),
     df = den_df,
     r.squared = r_squared,
@@ -93,5 +94,3 @@ predict.my_lm <- function(object, newdata, ...) {
     return(preds)
   }
 }
-
-
