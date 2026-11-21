@@ -1,3 +1,29 @@
+#' Fit a linear regression model
+#'
+#' Fits a linear model by ordinary least squares, computing
+#' \eqn{\hat\beta = (X^TX)^{-1}X^Ty} directly instead of calling `lm()`.
+#'
+#' @param formula A model formula of the form `y ~ x1 + x2`.
+#' @param data A data frame containing the variables in the formula.
+#'
+#' @returns An object of class `"my_lm"`: a list containing
+#' \describe{
+#'   \item{y}{The response vector.}
+#'   \item{coefficients}{Named vector of estimated coefficients.}
+#'   \item{fitted.values}{Fitted values \eqn{X\hat\beta}.}
+#'   \item{residuals}{Residuals \eqn{y - X\hat\beta}.}
+#'   \item{df.residual}{Residual degrees of freedom, \eqn{n - p}.}
+#'   \item{call}{The matched call.}
+#'   \item{xtx_inv}{The matrix \eqn{(X^TX)^{-1}}.}
+#'   \item{terms}{The model terms, used by `predict()`.}
+#' }
+#' @export
+#'
+#' @examples
+#' fit <- my_lm(mpg ~ wt + hp, data = mtcars)
+#' fit
+#' summary(fit)
+#' predict(fit, newdata = data.frame(wt = 3, hp = 150))
 my_lm <- function(formula, data) {
   cl <- match.call()
   if (is.data.frame(data) == FALSE) {
@@ -28,6 +54,33 @@ my_lm <- function(formula, data) {
   return(values)
 }
 
+#' Summarize a my_lm fit
+#'
+#' Computes standard errors, t-tests, \eqn{R^2}, adjusted \eqn{R^2}, and the
+#' overall F-test for a fitted `my_lm` model.
+#'
+#' @param object A fitted model of class `"my_lm"`.
+#' @param ... Further arguments (currently ignored).
+#'
+#' @returns An object of class `"summary.my_lm"`: a list containing
+#' \describe{
+#'   \item{call}{The call used to fit the model.}
+#'   \item{coefficients}{Matrix with columns for the estimate, standard
+#'     error, t value, and two-sided p-value of each coefficient.}
+#'   \item{residuals}{The model residuals.}
+#'   \item{sigma}{Residual standard error, \eqn{\hat\sigma}.}
+#'   \item{df}{Residual degrees of freedom, \eqn{n - p}.}
+#'   \item{r.squared}{\eqn{R^2}.}
+#'   \item{adj.r.squared}{Adjusted \eqn{R^2}.}
+#'   \item{fstatistic}{Named vector: the F value and its numerator and
+#'     denominator degrees of freedom.}
+#' }
+#' @export
+#'
+#' @examples
+#' fit <- my_lm(mpg ~ wt + hp, data = mtcars)
+#' summary(fit)
+#' summary(fit)$r.squared
 summary.my_lm <- function(object, ...) {
   n <- length(object$y)
   p <- length(object$coefficients)
@@ -60,6 +113,15 @@ summary.my_lm <- function(object, ...) {
   return(values)
 }
 
+#' Print a my_lm fit
+#'
+#' Displays the call and estimated coefficients of a fitted `my_lm` model.
+#'
+#' @param x An object of class `"my_lm"`.
+#' @param ... Further arguments (currently ignored).
+#'
+#' @returns `x` invisibly
+#' @export
 print.my_lm <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
@@ -69,6 +131,15 @@ print.my_lm <- function(x, ...) {
   invisible(x)
 }
 
+#' Print a summary of a my_lm fit
+#'
+#' Displays the call, residual quantiles, coefficient table, residual standard error, \eqn{R^2}, and F-statistic.
+#'
+#' @param x An object of class `"summary.my_lm"`
+#' @param ... Further arguments (currently ignored)
+#'
+#' @returns `x` invisibly
+#' @export
 print.summary.my_lm <- function(x, ...) {
   cat("Call:\n")
   print(x$call)
@@ -88,6 +159,23 @@ print.summary.my_lm <- function(x, ...) {
   invisible(x)
 }
 
+#' Predict from a my_lm fit
+#'
+#' Computes predicted values from a fitted `my_lm` model, for the original
+#' data or for new observations.
+#'
+#' @param object A fitted model of class `"my_lm"`.
+#' @param newdata Optional data frame containing values of the predictor
+#'   variables. If omitted, the fitted values are returned.
+#' @param ... Further arguments (currently ignored).
+#'
+#' @returns A named numeric vector of predicted values.
+#' @export
+#'
+#' @examples
+#' fit <- my_lm(mpg ~ wt + hp, data = mtcars)
+#' predict(fit)
+#' predict(fit, newdata = data.frame(wt = c(2.5, 3.5), hp = c(100, 200)))
 predict.my_lm <- function(object, newdata, ...) {
   if (missing(newdata)) {
     return(object$fitted.values)
@@ -100,3 +188,5 @@ predict.my_lm <- function(object, newdata, ...) {
     return(preds)
   }
 }
+
+?my_lm

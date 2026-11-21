@@ -1,0 +1,169 @@
+---
+title: "Introduction to linreg"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to linreg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(linreg)
+```
+
+## Overview
+
+linreg fits linear regression models using ordinary least squares, computing
+the estimates directly from \(\hat\beta = (X^\top X)^{-1} X^\top y\) rather
+than calling `lm()`. It provides `my_lm()` for fitting, along with
+`print()`, `summary()`, and `predict()` methods whose output mirrors those
+of `lm()`. This vignette shows how to use the package and compares its
+results and speed against `lm()`.
+
+## Fitting a model
+
+We model fuel efficiency (`mpg`) as a function of weight (`wt`) and
+horsepower (`hp`) using the built-in `mtcars` data.
+
+```{r}
+fit <- my_lm(mpg ~ wt + hp, data = mtcars)
+fit
+```
+
+`summary()` adds standard errors, t-tests, \(R^2\), and the overall F-test.
+
+```{r}
+summary(fit)
+```
+
+`predict()` returns fitted values for the original data, or predictions
+for new observations.
+
+```{r}
+new_cars <- data.frame(wt = c(2.5, 3.5), hp = c(100, 200))
+predict(fit, newdata = new_cars)
+```
+
+## Correctness
+
+To check that linreg reproduces `lm()`, we fit the same models with both
+functions and compare their output with `all.equal()`. Every comparison
+should return `TRUE`.
+
+### The mtcars model
+
+```{r}
+lm_fit <- lm(mpg ~ wt + hp, data = mtcars)
+s      <- summary(fit)
+lm_s   <- summary(lm_fit)
+
+all.equal(coef(fit), coef(lm_fit))
+all.equal(fitted(fit), fitted(lm_fit))
+all.equal(residuals(fit), residuals(lm_fit))
+all.equal(s$coefficients, lm_s$coefficients)
+all.equal(s$sigma, lm_s$sigma)
+all.equal(s$r.squared, lm_s$r.squared)
+all.equal(s$adj.r.squared, lm_s$adj.r.squared)
+all.equal(s$fstatistic, lm_s$fstatistic)
+all.equal(predict(fit, newdata = new_cars), predict(lm_fit, newdata = new_cars))
+```
+
+### Simulated data with known coefficients
+
+We simulate data from a model with true coefficients
+\(\beta = (2, 1.5, -0.5, 3)\) and check that `my_lm()` recovers them and
+agrees with `lm()`.
+
+```{r}
+set.seed(67)
+n  <- 10000
+x1 <- rnorm(n)
+x2 <- rnorm(n)
+x3 <- runif(n)
+y  <- 2 + 1.5 * x1 - 0.5 * x2 + 3 * x3 + rnorm(n)
+sim <- data.frame(y, x1, x2, x3)
+
+sim_fit <- my_lm(y ~ x1 + x2 + x3, data = sim)
+coef(sim_fit)
+all.equal(coef(sim_fit), coef(lm(y ~ x1 + x2 + x3, data = sim)))
+```
+
+### A categorical predictor
+
+Factors are converted to dummy variables by `model.matrix()`, so
+`my_lm()` handles them the same way `lm()` does.
+
+```{r}
+cyl_fit    <- my_lm(mpg ~ wt + factor(cyl), data = mtcars)
+cyl_lm_fit <- lm(mpg ~ wt + factor(cyl), data = mtcars)
+all.equal(coef(cyl_fit), coef(cyl_lm_fit))
+all.equal(summary(cyl_fit)$coefficients, summary(cyl_lm_fit)$coefficients)
+```
+
+## Efficiency
+
+We compare the speed of `my_lm()` and `lm()` with `bench::mark()` on
+simulated data of increasing size. `bench::mark()` also checks that both
+return the same coefficients.
+
+```{r}
+simulate_data <- function(n) {
+  x1 <- rnorm(n)
+  x2 <- rnorm(n)
+  x3 <- runif(n)
+  y  <- 2 + 1.5 * x1 - 0.5 * x2 + 3 * x3 + rnorm(n)
+  data.frame(y, x1, x2, x3)
+}
+```
+
+### n = 1,000
+
+```{r, eval = requireNamespace("bench", quietly = TRUE)}
+d <- simulate_data(1000)
+bench::mark(
+  my_lm = coef(my_lm(y ~ x1 + x2 + x3, data = d)),
+  lm    = coef(lm(y ~ x1 + x2 + x3, data = d))
+)
+```
+
+### n = 10,000
+
+```{r, eval = requireNamespace("bench", quietly = TRUE)}
+d <- simulate_data(10000)
+bench::mark(
+  my_lm = coef(my_lm(y ~ x1 + x2 + x3, data = d)),
+  lm    = coef(lm(y ~ x1 + x2 + x3, data = d))
+)
+```
+
+### n = 100,000
+
+```{r, eval = requireNamespace("bench", quietly = TRUE)}
+d <- simulate_data(100000)
+bench::mark(
+  my_lm = coef(my_lm(y ~ x1 + x2 + x3, data = d)),
+  lm    = coef(lm(y ~ x1 + x2 + x3, data = d))
+)
+```
+
+`my_lm()` is slightly faster at n = 1,000, but slower at n = 10,000 and
+n = 100,000. This is expected: `my_lm()` has less overhead than `lm()`,
+which helps on small data, but it explicitly computes
+\((X^\top X)^{-1} X^\top\) before multiplying by \(y\), which becomes costly
+as n grows. `lm()` instead uses a QR decomposition in compiled code, which
+is why it performs better for larger n.
+
+## Conclusion
+
+`my_lm()` reproduces the coefficients, standard errors, test statistics,
+fit statistics, and predictions of `lm()` exactly, on real data, simulated
+data, and a model with a categorical predictor. It is slightly faster than
+`lm()` on small datasets, while `lm()`'s compiled QR-based approach is
+faster as the sample size grows.

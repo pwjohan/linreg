@@ -1,18 +1,27 @@
 Package: linreg
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Linear Regression
 Version: 0.1.0
 Authors@R: c(
     person(
-      "Jane", "Doe",
-      email = "jane@example.com",
+      "Payson", "Johanson",
+      email = "pwjohan@umich.edu",
       role = c("aut", "cre")
     )
   )
-Description: More about what it does (maybe more than one line).
-    Continuation lines should be indented.
-License: What license is it under?
+Description: Re-implements ordinary least squares linear regression from
+    scratch, computing coefficient estimates, standard errors, t-tests,
+    R-squared, and the overall F-test without calling lm(). Includes
+    print, summary, and predict methods that mirror those for lm objects.
+License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 URL: https://github.com/pwjohan/linreg
 BugReports: https://github.com/pwjohan/linreg/issues
+Imports: 
+    stats
+Config/roxygen2/version: 8.1.1
+Suggests: 
+    bench,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
